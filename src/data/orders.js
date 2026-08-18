@@ -6,8 +6,7 @@ export function makeOrderId() {
   return "TNT-" + Math.random().toString(36).slice(2, 8).toUpperCase();
 }
 
-// Creates the order + its line items in Supabase.
-// cartItems: [{ id, name, size, price, qty, img }] — same shape CartContext already produces.
+
 export async function saveOrder({ id, cartItems, subtotal, deliveryFee, total, customer, userId, promoCode, discountAmount }) {
   const { error: orderError } = await supabase.from("orders").insert({
     id,
@@ -41,7 +40,7 @@ export async function saveOrder({ id, cartItems, subtotal, deliveryFee, total, c
   return { ok: true };
 }
 
-// Fetches an order + its line items, reshaped to match what the UI expects.
+
 export async function getOrder(id) {
   const { data: order, error } = await supabase
     .from("orders")
@@ -80,8 +79,7 @@ export async function getOrder(id) {
   };
 }
 
-// Real status now comes straight from the database (an admin/webhook updates it),
-// no more time-based fake progression.
+
 export function currentStage(order) {
   return ORDER_STAGES.indexOf(order.status);
 }
@@ -90,8 +88,7 @@ export function stageLabel(order) {
   return order.status;
 }
 
-// Fetches a lightweight list of a user's past orders for the Account page
-// (no line items needed here — just enough to list and link to each order).
+
 export async function getUserOrders(userId) {
   const { data, error } = await supabase
     .from("orders")

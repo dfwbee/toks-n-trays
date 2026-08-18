@@ -9,8 +9,7 @@ export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Scrolls to a section id. If not on the home page, navigates home first
-  // and lets HomePage's hash-scroll effect finish the job.
+  
   const scrollTo = (id) => {
     if (location.pathname !== "/") {
       navigate(`/#${id}`);
