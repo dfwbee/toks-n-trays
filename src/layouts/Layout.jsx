@@ -3,7 +3,7 @@ import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import Navbar from "../components/Navbar.jsx";
 import Footer from "../components/Footer.jsx";
 import CartDrawer from "../components/CartDrawer.jsx";
-import WhatsAppButton from "../components/WhatsAppButton.jsx";
+import WhatsAppButton from "./components/WhatsAppButton.jsx";
 
 export default function Layout() {
   const navigate = useNavigate();
