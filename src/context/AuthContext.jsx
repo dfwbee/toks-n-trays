@@ -12,7 +12,7 @@ export function AuthProvider({ children }) {
     if (!session?.user) return null;
     const { data: profile } = await supabase
       .from("profiles")
-      .select("name, phone, is_admin")
+      .select("name, phone, is_admin, avatar_url")
       .eq("id", session.user.id)
       .single();
     return {
@@ -21,6 +21,7 @@ export function AuthProvider({ children }) {
       name: profile?.name || "",
       phone: profile?.phone || "",
       isAdmin: profile?.is_admin || false,
+      avatarUrl: profile?.avatar_url || "",
     };
   }
 
@@ -77,8 +78,43 @@ export function AuthProvider({ children }) {
     return { ok: true };
   }
 
+  async function updateAvatar(file) {
+    if (!user) return { ok: false, error: "Not logged in." };
+
+    const ext = file.name.split(".").pop();
+    const path = `${user.id}/avatar.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("avatars")
+      .upload(path, file, { upsert: true });
+    if (uploadError) return { ok: false, error: uploadError.message };
+
+    const { data } = supabase.storage.from("avatars").getPublicUrl(path);
+    const url = `${data.publicUrl}?t=${Date.now()}`; // cache-bust so the new photo shows immediately
+
+    const { error: dbError } = await supabase
+      .from("profiles")
+      .update({ avatar_url: url })
+      .eq("id", user.id);
+    if (dbError) return { ok: false, error: dbError.message };
+
+    setUser((u) => ({ ...u, avatarUrl: url }));
+    return { ok: true, url };
+  }
+
+  async function updateProfile({ name, phone }) {
+    if (!user) return { ok: false, error: "Not logged in." };
+    const { error } = await supabase
+      .from("profiles")
+      .update({ name, phone })
+      .eq("id", user.id);
+    if (error) return { ok: false, error: error.message };
+    setUser((u) => ({ ...u, name, phone }));
+    return { ok: true };
+  }
+
   return (
-    <AuthContext.Provider value={{ user, loading, signup, login, logout, requestPasswordReset, updatePassword }}>
+    <AuthContext.Provider value={{ user, loading, signup, login, logout, requestPasswordReset, updatePassword, updateAvatar, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );

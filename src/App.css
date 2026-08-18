@@ -1899,3 +1899,111 @@ footer {
     flex-wrap: wrap;
   }
 }
+
+/* ---------- Account page: avatar + info rows ---------- */
+.account-hero {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  margin-bottom: 8px;
+}
+
+.avatar-wrap {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.avatar-img {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(217, 156, 176, 0.4);
+}
+
+.avatar-fallback {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-alt);
+  border: 2px solid rgba(217, 156, 176, 0.4);
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 2.2rem;
+  color: var(--pink);
+}
+
+.avatar-edit-badge {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--pink);
+  color: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  border: 2px solid var(--bg);
+}
+
+.account-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(217, 156, 176, 0.1);
+  font-size: 0.9rem;
+}
+
+.account-info-row:last-of-type {
+  border-bottom: none;
+}
+
+.account-info-row span {
+  color: var(--muted);
+}
+
+.account-info-row strong {
+  font-weight: 500;
+  text-align: right;
+}
+
+@media (max-width: 700px) {
+  .account-hero {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* ---------- Addresses & delivery checker ---------- */
+.address-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.address-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  background: var(--bg);
+  border: 1px solid rgba(217, 156, 176, 0.14);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.address-label {
+  font-weight: 500;
+  margin-bottom: 4px;
+}

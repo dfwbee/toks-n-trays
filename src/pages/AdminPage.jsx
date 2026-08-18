@@ -3,12 +3,14 @@ import AdminStats from "../components/admin/AdminStats.jsx";
 import AdminOrders from "../components/admin/AdminOrders.jsx";
 import AdminMenuForm from "../components/admin/AdminMenuForm.jsx";
 import AdminCustomers from "../components/admin/AdminCustomers.jsx";
+import AdminDeliveryAreas from "../components/admin/AdminDeliveryAreas.jsx";
 
 const TABS = [
   { key: "stats", label: "Overview", Component: AdminStats },
   { key: "orders", label: "Orders", Component: AdminOrders },
   { key: "menu", label: "Menu", Component: AdminMenuForm },
   { key: "customers", label: "Customers", Component: AdminCustomers },
+  { key: "delivery", label: "Delivery Areas", Component: AdminDeliveryAreas },
 ];
 
 export default function AdminPage() {
