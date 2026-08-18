@@ -19,7 +19,7 @@ export default function OrderGateModal({ onClose }) {
           <div className="script" style={{ fontSize: "1.1rem" }}>Before You Order</div>
           <h3 className="serif">Sign In or Continue as Guest</h3>
           <p className="muted-text" style={{ marginBottom: 22 }}>
-            Sign in to track your orders and check out faster, or continue without an account.
+            Sign in to track your orders and check out faster, or Continue Without An Account.
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <button className="cta-btn" onClick={() => go("/login")}>Sign In</button>
