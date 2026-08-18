@@ -2,7 +2,7 @@ import React from "react";
 import { useCart } from "../context/CartContext.jsx";
 import { naira } from "../data/menuData.js";
 
-const WHATSAPP_NUMBER = "2348025529215"; // WA 0802 552 9215, in international format
+const WHATSAPP_NUMBER = "2348025529215";
 
 export default function WhatsAppButton() {
   const { items, subtotal } = useCart();
