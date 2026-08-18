@@ -10,7 +10,7 @@ export default function DeliveryBand() {
             <div className="lbl">Hours After Payment</div>
           </div>
           <div>
-            <div className="num serif">Lagos</div>
+            <div className="num serif">Ibadan</div>
             <div className="lbl">Current Delivery Area</div>
           </div>
           <div>
