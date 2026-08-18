@@ -16,8 +16,12 @@ export default function CheckoutPage() {
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
-  // Once the order is saved, we keep its id so a retry doesn't create a duplicate order.
   const [pendingOrderId, setPendingOrderId] = useState(null);
+
+  const [promoInput, setPromoInput] = useState("");
+  const [promo, setPromo] = useState(null); // { code, discount_type, discount_value }
+  const [promoError, setPromoError] = useState("");
+  const [checkingPromo, setCheckingPromo] = useState(false);
 
   const [form, setForm] = useState({
     name: user?.name || "",
@@ -43,7 +47,41 @@ export default function CheckoutPage() {
     );
   }
 
-  const total = subtotal + DELIVERY_FEE;
+  const preDiscountTotal = subtotal + DELIVERY_FEE;
+  const discountAmount = promo
+    ? promo.discount_type === "percent"
+      ? Math.round(subtotal * (promo.discount_value / 100))
+      : Math.min(promo.discount_value, preDiscountTotal)
+    : 0;
+  const total = preDiscountTotal - discountAmount;
+
+  async function handleApplyPromo(e) {
+    e.preventDefault();
+    setPromoError("");
+    if (!promoInput.trim()) return;
+
+    setCheckingPromo(true);
+    const { data, error } = await supabase
+      .from("promo_codes")
+      .select("*")
+      .ilike("code", promoInput.trim())
+      .eq("is_active", true)
+      .maybeSingle();
+    setCheckingPromo(false);
+
+    if (error || !data) {
+      setPromoError("That promo code isn't valid or has expired.");
+      setPromo(null);
+      return;
+    }
+    setPromo(data);
+  }
+
+  function removePromo() {
+    setPromo(null);
+    setPromoInput("");
+    setPromoError("");
+  }
 
   function openPaymentPopup(orderId) {
     const reference = `pay-${orderId}-${Date.now()}`;
@@ -79,7 +117,6 @@ export default function CheckoutPage() {
     setSubmitError("");
     setSubmitting(true);
 
-    // If we already created the order (user is retrying payment), skip straight to payment.
     let orderId = pendingOrderId;
 
     if (!orderId) {
@@ -92,6 +129,8 @@ export default function CheckoutPage() {
         total,
         customer: { ...form },
         userId: user?.id,
+        promoCode: promo?.code || null,
+        discountAmount,
       });
 
       if (!result.ok) {
@@ -153,6 +192,34 @@ export default function CheckoutPage() {
             <span>Delivery Fee</span>
             <span>{naira(DELIVERY_FEE)}</span>
           </div>
+
+          {!pendingOrderId && (
+            <div style={{ margin: "14px 0" }}>
+              {promo ? (
+                <div className="summary-row" style={{ color: "var(--pink)" }}>
+                  <span>Promo "{promo.code}" applied</span>
+                  <span>
+                    −{naira(discountAmount)}{" "}
+                    <button type="button" onClick={removePromo} style={{ background: "none", border: "none", color: "var(--muted)", textDecoration: "underline", cursor: "pointer", marginLeft: 6 }}>Remove</button>
+                  </span>
+                </div>
+              ) : (
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input
+                    placeholder="Promo code"
+                    value={promoInput}
+                    onChange={(e) => setPromoInput(e.target.value)}
+                    style={{ flex: 1 }}
+                  />
+                  <button className="cta-outline" onClick={handleApplyPromo} disabled={checkingPromo}>
+                    {checkingPromo ? "…" : "Apply"}
+                  </button>
+                </div>
+              )}
+              {promoError && <div className="form-error" style={{ marginTop: 8 }}>{promoError}</div>}
+            </div>
+          )}
+
           <div className="summary-row total">
             <span>Total</span>
             <span>{naira(total)}</span>

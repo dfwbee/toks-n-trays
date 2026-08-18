@@ -8,7 +8,7 @@ export function makeOrderId() {
 
 // Creates the order + its line items in Supabase.
 // cartItems: [{ id, name, size, price, qty, img }] — same shape CartContext already produces.
-export async function saveOrder({ id, cartItems, subtotal, deliveryFee, total, customer, userId }) {
+export async function saveOrder({ id, cartItems, subtotal, deliveryFee, total, customer, userId, promoCode, discountAmount }) {
   const { error: orderError } = await supabase.from("orders").insert({
     id,
     user_id: userId || null,
@@ -20,6 +20,8 @@ export async function saveOrder({ id, cartItems, subtotal, deliveryFee, total, c
     subtotal,
     delivery_fee: deliveryFee,
     total,
+    promo_code: promoCode || null,
+    discount_amount: discountAmount || 0,
     status: "Received",
     payment_status: "pending",
   });
