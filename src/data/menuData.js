@@ -90,5 +90,6 @@ export function naira(n) {
 }
 
 export function minPrice(sizes) {
-  return Math.min(...Object.values(sizes));
+  const values = Object.values(sizes || {});
+  return values.length ? Math.min(...values) : 0;
 }

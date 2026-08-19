@@ -87,6 +87,10 @@ export default function AdminMenuItemForm({ item, existingCategories = [], onSav
     form.sizes.forEach((s) => {
       if (s.label.trim()) sizesObj[s.label.trim()] = Number(s.price) || 0;
     });
+    if (Object.keys(sizesObj).length === 0) {
+      alert("Add at least one size and price before saving.");
+      return;
+    }
     onSave({
       id: isEdit ? form.id : slugify(form.name),
       name: form.name.trim(),
