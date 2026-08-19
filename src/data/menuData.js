@@ -80,13 +80,13 @@ export const CATEGORIES = [
 ];
 
 export const TESTIMONIALS = [
-  { name: "Amaka O.", quote: "Every tray tastes like a Sunday afternoon at my mother's table. The Egusi is unmatched.", city: "Bodija, Ibadan" },
-  { name: "Chidera E.", quote: "Ordered the Loaded pizza for a small gathering and it disappeared in minutes. Restaurant quality, home warmth.", city: "Akobo, Ibadan" },
-  { name: "Femi A.", quote: "The packaging alone feels premium. You can tell every tray is made with real care, not mass produced.", city: "Apete, Ibadan" },
+  { name: "Amaka O.", quote: "Every tray tastes like a Sunday afternoon at my mother's table. The Egusi is unmatched.", city: "Lekki, Lagos" },
+  { name: "Chidera E.", quote: "Ordered the Loaded pizza for a small gathering and it disappeared in minutes. Restaurant quality, home warmth.", city: "Ikeja, Lagos" },
+  { name: "Femi A.", quote: "The packaging alone feels premium. You can tell every tray is made with real care, not mass produced.", city: "Ajah, Lagos" },
 ];
 
 export function naira(n) {
-  return "₦" + n.toLocaleString("en-NG");
+  return "₦" + (Number(n) || 0).toLocaleString("en-NG");
 }
 
 export function minPrice(sizes) {
