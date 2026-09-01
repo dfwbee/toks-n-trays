@@ -25,6 +25,10 @@ export default function CheckoutPage() {
   const [promoError, setPromoError] = useState("");
   const [checkingPromo, setCheckingPromo] = useState(false);
 
+  const [deliveryTiming, setDeliveryTiming] = useState("asap"); // "asap" | "scheduled"
+  const [scheduledDate, setScheduledDate] = useState("");
+  const [scheduledTime, setScheduledTime] = useState("");
+
   const [form, setForm] = useState({
     name: user?.name || "",
     email: user?.email || "",
@@ -137,6 +141,10 @@ export default function CheckoutPage() {
       setSubmitError("Please select your delivery area before continuing.");
       return;
     }
+    if (deliveryTiming === "scheduled" && (!scheduledDate || !scheduledTime)) {
+      setSubmitError("Please pick a date and time for your scheduled delivery.");
+      return;
+    }
 
     setSubmitting(true);
 
@@ -144,6 +152,11 @@ export default function CheckoutPage() {
 
     if (!orderId) {
       orderId = makeOrderId();
+      let scheduledFor = null;
+      if (deliveryTiming === "scheduled" && scheduledDate && scheduledTime) {
+        scheduledFor = new Date(`${scheduledDate}T${scheduledTime}`).toISOString();
+      }
+
       const result = await saveOrder({
         id: orderId,
         cartItems: items,
@@ -154,6 +167,7 @@ export default function CheckoutPage() {
         userId: user?.id,
         promoCode: promo?.code || null,
         discountAmount,
+        scheduledFor,
       });
 
       if (!result.ok) {
@@ -206,6 +220,25 @@ export default function CheckoutPage() {
           {!areasLoading && areas.length === 0 && (
             <p className="muted-text">No delivery areas are set up yet — contact us directly to order.</p>
           )}
+
+          <label>Delivery Time</label>
+          <div style={{ display: "flex", gap: 16, marginBottom: 4 }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: "normal" }}>
+              <input type="radio" name="timing" checked={deliveryTiming === "asap"} disabled={!!pendingOrderId} onChange={() => setDeliveryTiming("asap")} />
+              As soon as possible
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: "normal" }}>
+              <input type="radio" name="timing" checked={deliveryTiming === "scheduled"} disabled={!!pendingOrderId} onChange={() => setDeliveryTiming("scheduled")} />
+              Schedule for later
+            </label>
+          </div>
+          {deliveryTiming === "scheduled" && (
+            <div style={{ display: "flex", gap: 10, marginBottom: 4 }}>
+              <input type="date" required disabled={!!pendingOrderId} value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)} style={{ flex: 1 }} />
+              <input type="time" required disabled={!!pendingOrderId} value={scheduledTime} onChange={(e) => setScheduledTime(e.target.value)} style={{ flex: 1 }} />
+            </div>
+          )}
+
           <label>
             Street Address
             <textarea required rows={3} disabled={!!pendingOrderId} value={form.address} onChange={(e) => update("address", e.target.value)} placeholder="House number, street, landmark…" />

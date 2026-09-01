@@ -42,6 +42,11 @@ export default function AdminOrders() {
           </div>
           <div className="muted-text">{o.customer_name} · {o.customer_phone}</div>
           <div className="muted-text">{o.delivery_address}</div>
+          {o.scheduled_for && (
+            <div className="muted-text" style={{ color: "var(--pink)" }}>
+              📅 Scheduled: {new Date(o.scheduled_for).toLocaleString("en-NG")}
+            </div>
+          )}
           <div style={{ margin: "8px 0" }}>Total: <strong>{naira(o.total)}</strong></div>
           <label>
             Status:{" "}

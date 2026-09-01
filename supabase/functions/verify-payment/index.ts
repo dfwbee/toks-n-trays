@@ -1,7 +1,3 @@
-// Supabase Edge Function: verify-payment
-// Deploy with: supabase functions deploy verify-payment
-// Requires secrets: PAYSTACK_SECRET_KEY (SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are auto-provided)
-
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -23,10 +19,9 @@ Deno.serve(async (req) => {
     const paystackSecret = Deno.env.get("PAYSTACK_SECRET_KEY");
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL"),
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") // service role bypasses RLS — safe here, this runs server-side only
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
     );
 
-    // 1. Ask Paystack directly: did this transaction actually succeed?
     const verifyRes = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
       headers: { Authorization: `Bearer ${paystackSecret}` },
     });
@@ -36,11 +31,10 @@ Deno.serve(async (req) => {
       return json({ ok: false, error: "Payment was not successful." }, 400);
     }
 
-    // 2. Cross-check the amount Paystack actually received against the order total,
-    //    so a tampered client-side amount can't sneak a cheaper "paid" order through.
+    // 2. Cross-check the amount Paystack actually received against the order total
     const { data: order, error: orderError } = await supabase
       .from("orders")
-      .select("total, payment_status")
+      .select("*")
       .eq("id", orderId)
       .single();
 
@@ -51,7 +45,7 @@ Deno.serve(async (req) => {
       return json({ ok: false, error: "Amount mismatch — payment not accepted." }, 400);
     }
     if (order.payment_status === "paid") {
-      return json({ ok: true, alreadyPaid: true }); // avoid double-processing on retry
+      return json({ ok: true, alreadyPaid: true });
     }
 
     // 3. Mark the order paid
@@ -64,11 +58,62 @@ Deno.serve(async (req) => {
       return json({ ok: false, error: updateError.message }, 500);
     }
 
+    // 4. Send a confirmation email — this is best-effort: if it fails, we still
+    //    return success for the payment itself, since the order is already paid.
+    try {
+      const { data: lineItems } = await supabase
+        .from("order_items")
+        .select("*")
+        .eq("order_id", orderId);
+      await sendConfirmationEmail(order, lineItems || []);
+    } catch (emailErr) {
+      console.error("Confirmation email failed:", emailErr);
+    }
+
     return json({ ok: true });
   } catch (err) {
     return json({ ok: false, error: err.message }, 500);
   }
 });
+
+async function sendConfirmationEmail(order, lineItems) {
+  const resendKey = Deno.env.get("RESEND_API_KEY");
+  if (!resendKey) return; // not configured yet — skip quietly
+
+  const itemsHtml = lineItems
+    .map((i) => `<tr><td style="padding:6px 0;">${i.quantity} × ${i.name} (${i.size})</td><td style="text-align:right;">₦${(i.unit_price * i.quantity).toLocaleString()}</td></tr>`)
+    .join("");
+
+  const html = `
+    <div style="font-family: Georgia, serif; max-width: 480px; margin: 0 auto; color: #2a2422;">
+      <h2 style="color:#b56f89;">Thank you, ${order.customer_name.split(" ")[0]}!</h2>
+      <p>Your order <strong>${order.id}</strong> has been received and is being prepared.</p>
+      <table style="width:100%; border-collapse:collapse; margin:16px 0;">
+        ${itemsHtml}
+        <tr><td style="padding-top:10px;">Delivery Fee</td><td style="text-align:right; padding-top:10px;">₦${order.delivery_fee.toLocaleString()}</td></tr>
+        ${order.discount_amount ? `<tr><td>Discount</td><td style="text-align:right;">−₦${order.discount_amount.toLocaleString()}</td></tr>` : ""}
+        <tr><td style="font-weight:bold; padding-top:10px; border-top:1px solid #ddd;">Total</td><td style="text-align:right; font-weight:bold; padding-top:10px; border-top:1px solid #ddd;">₦${order.total.toLocaleString()}</td></tr>
+      </table>
+      <p>Delivering to: ${order.delivery_address}</p>
+      ${order.scheduled_for ? `<p>Scheduled for: ${new Date(order.scheduled_for).toLocaleString("en-NG")}</p>` : ""}
+      <p style="margin-top:24px; color:#8a8078;">Toks 'N' Trays — Homemade Luxury. Made With Love.</p>
+    </div>
+  `;
+
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${resendKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: "Toks 'N' Trays <orders@toksntrays.com>",
+      to: order.customer_email,
+      subject: `Order Confirmed — ${order.id}`,
+      html,
+    }),
+  });
+}
 
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), {

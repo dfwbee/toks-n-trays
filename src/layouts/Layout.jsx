@@ -3,13 +3,14 @@ import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import Navbar from "../components/Navbar.jsx";
 import Footer from "../components/Footer.jsx";
 import CartDrawer from "../components/CartDrawer.jsx";
+import TawkChat from "../components/TawkChat.jsx";
 import WhatsAppButton from "../components/WhatsappButton.jsx";
 
 export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  
+
   const scrollTo = (id) => {
     if (location.pathname !== "/") {
       navigate(`/#${id}`);
@@ -24,6 +25,7 @@ export default function Layout() {
       <Outlet />
       <Footer scrollTo={scrollTo} />
       <CartDrawer />
+      <TawkChat />
       <WhatsAppButton />
       <button
         className="cta-btn sticky-order"

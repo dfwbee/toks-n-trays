@@ -6,8 +6,8 @@ export function makeOrderId() {
   return "TNT-" + Math.random().toString(36).slice(2, 8).toUpperCase();
 }
 
-
-export async function saveOrder({ id, cartItems, subtotal, deliveryFee, total, customer, userId, promoCode, discountAmount }) {
+// Creates the order + its line items in Supabase.
+export async function saveOrder({ id, cartItems, subtotal, deliveryFee, total, customer, userId, promoCode, discountAmount, scheduledFor }) {
   const { error: orderError } = await supabase.from("orders").insert({
     id,
     user_id: userId || null,
@@ -21,6 +21,7 @@ export async function saveOrder({ id, cartItems, subtotal, deliveryFee, total, c
     total,
     promo_code: promoCode || null,
     discount_amount: discountAmount || 0,
+    scheduled_for: scheduledFor || null,
     status: "Received",
     payment_status: "pending",
   });
@@ -40,7 +41,7 @@ export async function saveOrder({ id, cartItems, subtotal, deliveryFee, total, c
   return { ok: true };
 }
 
-
+// Fetches an order + its line items, reshaped to match what the UI expects.
 export async function getOrder(id) {
   const { data: order, error } = await supabase
     .from("orders")
@@ -68,6 +69,7 @@ export async function getOrder(id) {
     total: order.total,
     status: order.status,
     paymentStatus: order.payment_status,
+    scheduledFor: order.scheduled_for,
     customer: {
       name: order.customer_name,
       email: order.customer_email,
@@ -79,7 +81,6 @@ export async function getOrder(id) {
   };
 }
 
-
 export function currentStage(order) {
   return ORDER_STAGES.indexOf(order.status);
 }
@@ -88,7 +89,7 @@ export function stageLabel(order) {
   return order.status;
 }
 
-
+// Fetches a lightweight list of a user's past orders for the Account page.
 export async function getUserOrders(userId) {
   const { data, error } = await supabase
     .from("orders")
