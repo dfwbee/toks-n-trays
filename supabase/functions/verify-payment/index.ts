@@ -1,3 +1,8 @@
+// Supabase Edge Function: verify-payment
+// Deploy with: supabase functions deploy verify-payment
+// Requires secrets: PAYSTACK_SECRET_KEY, RESEND_API_KEY
+// (SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are auto-provided)
+
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -22,6 +27,7 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
     );
 
+    // 1. Ask Paystack directly: did this transaction actually succeed?
     const verifyRes = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
       headers: { Authorization: `Bearer ${paystackSecret}` },
     });
@@ -58,23 +64,32 @@ Deno.serve(async (req) => {
       return json({ ok: false, error: updateError.message }, 500);
     }
 
-    // 4. Send a confirmation email in the background — don't block the response on it.
-const emailPromise = (async () => {
-try {
-const { data: lineItems } = await supabase
-.from("order_items")
-.select("*")
-.eq("order_id", orderId);
-await sendConfirmationEmail(order, lineItems || []);
-} catch (emailErr) {
-console.error("Confirmation email failed:", emailErr);
-}
-})();
+    // 4. Fire the confirmation email in the BACKGROUND — never let a slow or
+    //    failed email delay confirming the payment to the customer.
+    //    EdgeRuntime.waitUntil lets this keep running after we've already responded.
+    const emailTask = (async () => {
+      try {
+        const { data: lineItems } = await supabase
+          .from("order_items")
+          .select("*")
+          .eq("order_id", orderId);
+        await sendConfirmationEmail(order, lineItems || []);
+      } catch (emailErr) {
+        console.error("Confirmation email failed:", emailErr);
+      }
+    })();
 
-// @ts-ignore - Deno global, keeps the function alive until the email finishes
-EdgeRuntime.waitUntil(emailPromise);
+    if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
+      EdgeRuntime.waitUntil(emailTask);
+    }
+    // If waitUntil isn't available, emailTask still runs — we just don't await it,
+    // so the response below goes out immediately either way.
 
-return json({ ok: true });
+    return json({ ok: true });
+  } catch (err) {
+    return json({ ok: false, error: err.message }, 500);
+  }
+});
 
 async function sendConfirmationEmail(order, lineItems) {
   const resendKey = Deno.env.get("RESEND_API_KEY");
@@ -100,19 +115,28 @@ async function sendConfirmationEmail(order, lineItems) {
     </div>
   `;
 
-  await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${resendKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: "Toks 'N' Trays <orders@toksntrays.com>",
-      to: order.customer_email,
-      subject: `Order Confirmed — ${order.id}`,
-      html,
-    }),
-  });
+  // A hard timeout so a slow/unreachable Resend API can never hang this task forever.
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+
+  try {
+    await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${resendKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: "Toks 'N' Trays <orders@toksntrays.com>",
+        to: order.customer_email,
+        subject: `Order Confirmed — ${order.id}`,
+        html,
+      }),
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function json(body, status = 200) {
