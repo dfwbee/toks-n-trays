@@ -58,23 +58,23 @@ Deno.serve(async (req) => {
       return json({ ok: false, error: updateError.message }, 500);
     }
 
-    // 4. Send a confirmation email — this is best-effort: if it fails, we still
-    //    return success for the payment itself, since the order is already paid.
-    try {
-      const { data: lineItems } = await supabase
-        .from("order_items")
-        .select("*")
-        .eq("order_id", orderId);
-      await sendConfirmationEmail(order, lineItems || []);
-    } catch (emailErr) {
-      console.error("Confirmation email failed:", emailErr);
-    }
+    // 4. Send a confirmation email in the background — don't block the response on it.
+const emailPromise = (async () => {
+try {
+const { data: lineItems } = await supabase
+.from("order_items")
+.select("*")
+.eq("order_id", orderId);
+await sendConfirmationEmail(order, lineItems || []);
+} catch (emailErr) {
+console.error("Confirmation email failed:", emailErr);
+}
+})();
 
-    return json({ ok: true });
-  } catch (err) {
-    return json({ ok: false, error: err.message }, 500);
-  }
-});
+// @ts-ignore - Deno global, keeps the function alive until the email finishes
+EdgeRuntime.waitUntil(emailPromise);
+
+return json({ ok: true });
 
 async function sendConfirmationEmail(order, lineItems) {
   const resendKey = Deno.env.get("RESEND_API_KEY");
