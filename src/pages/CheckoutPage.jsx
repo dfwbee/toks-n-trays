@@ -112,9 +112,24 @@ export default function CheckoutPage() {
       reference,
       onSuccess: async (paidReference) => {
         setSubmitting(true);
-        const { data, error } = await supabase.functions.invoke("verify-payment", {
-          body: { orderId, reference: paidReference },
-        });
+        let data, error;
+        try {
+          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+          const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+          const res = await fetch(`${supabaseUrl}/functions/v1/verify-payment`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${anonKey}`,
+              "apikey": anonKey,
+            },
+            body: JSON.stringify({ orderId, reference: paidReference }),
+          });
+          data = await res.json();
+          if (!res.ok) error = true;
+        } catch (fetchErr) {
+          error = fetchErr;
+        }
         setSubmitting(false);
 
         if (error || !data?.ok) {
