@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -6,8 +6,6 @@ import { supabase } from "../lib/supabaseClient.js";
 import { naira } from "../data/menuData.js";
 import { saveOrder, makeOrderId } from "../data/orders.js";
 import { payWithPaystack } from "../lib/paystack.js";
-
-const DELIVERY_FEE = 3000;
 
 export default function CheckoutPage() {
   const { items, subtotal, clear } = useCart();
@@ -17,6 +15,10 @@ export default function CheckoutPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [pendingOrderId, setPendingOrderId] = useState(null);
+
+  const [areas, setAreas] = useState([]);
+  const [areasLoading, setAreasLoading] = useState(true);
+  const [selectedAreaId, setSelectedAreaId] = useState("");
 
   const [promoInput, setPromoInput] = useState("");
   const [promo, setPromo] = useState(null); // { code, discount_type, discount_value }
@@ -30,6 +32,18 @@ export default function CheckoutPage() {
     address: "",
     notes: "",
   });
+
+  useEffect(() => {
+    supabase
+      .from("delivery_areas")
+      .select("*")
+      .eq("is_active", true)
+      .order("area_name")
+      .then(({ data }) => {
+        setAreas(data || []);
+        setAreasLoading(false);
+      });
+  }, []);
 
   function update(field, value) {
     setForm((f) => ({ ...f, [field]: value }));
@@ -47,7 +61,10 @@ export default function CheckoutPage() {
     );
   }
 
-  const preDiscountTotal = subtotal + DELIVERY_FEE;
+  const selectedArea = areas.find((a) => String(a.id) === String(selectedAreaId));
+  const deliveryFee = selectedArea ? selectedArea.fee : 0;
+
+  const preDiscountTotal = subtotal + deliveryFee;
   const discountAmount = promo
     ? promo.discount_type === "percent"
       ? Math.round(subtotal * (promo.discount_value / 100))
@@ -115,6 +132,12 @@ export default function CheckoutPage() {
   async function handleSubmit(e) {
     e.preventDefault();
     setSubmitError("");
+
+    if (!selectedArea) {
+      setSubmitError("Please select your delivery area before continuing.");
+      return;
+    }
+
     setSubmitting(true);
 
     let orderId = pendingOrderId;
@@ -125,9 +148,9 @@ export default function CheckoutPage() {
         id: orderId,
         cartItems: items,
         subtotal,
-        deliveryFee: DELIVERY_FEE,
+        deliveryFee,
         total,
-        customer: { ...form },
+        customer: { ...form, address: `${form.address} (${selectedArea.area_name})` },
         userId: user?.id,
         promoCode: promo?.code || null,
         discountAmount,
@@ -163,8 +186,29 @@ export default function CheckoutPage() {
             <input required disabled={!!pendingOrderId} value={form.phone} onChange={(e) => update("phone", e.target.value)} />
           </label>
           <label>
-            Delivery Address
-            <textarea required rows={3} disabled={!!pendingOrderId} value={form.address} onChange={(e) => update("address", e.target.value)} />
+            Delivery Area
+            <select
+              required
+              disabled={!!pendingOrderId || areasLoading}
+              value={selectedAreaId}
+              onChange={(e) => setSelectedAreaId(e.target.value)}
+            >
+              <option value="">
+                {areasLoading ? "Loading areas…" : "Select your area"}
+              </option>
+              {areas.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.area_name} — {naira(a.fee)} delivery
+                </option>
+              ))}
+            </select>
+          </label>
+          {!areasLoading && areas.length === 0 && (
+            <p className="muted-text">No delivery areas are set up yet — contact us directly to order.</p>
+          )}
+          <label>
+            Street Address
+            <textarea required rows={3} disabled={!!pendingOrderId} value={form.address} onChange={(e) => update("address", e.target.value)} placeholder="House number, street, landmark…" />
           </label>
           <label>
             Notes (optional)
@@ -190,7 +234,7 @@ export default function CheckoutPage() {
           ))}
           <div className="summary-row">
             <span>Delivery Fee</span>
-            <span>{naira(DELIVERY_FEE)}</span>
+            <span>{selectedArea ? naira(deliveryFee) : "Select area"}</span>
           </div>
 
           {!pendingOrderId && (

@@ -4,9 +4,6 @@ import { supabase } from "../../lib/supabaseClient.js";
 const BLANK = { id: "", name: "", category: "pizza", tag: "", img: "", sizes: [{ label: "Medium", price: "" }] };
 const BASE_CATEGORIES = ["pizza", "soup", "stew"];
 
-// item: pass an existing menu item to edit, or omit to create a new one.
-// existingCategories: every category already in use, so the dropdown includes any custom ones too.
-// onSave(itemObject) / onCancel() are called by the parent (AdminMenuForm).
 export default function AdminMenuItemForm({ item, existingCategories = [], onSave, onCancel, saving }) {
   const isEdit = !!item;
   const [form, setForm] = useState(
