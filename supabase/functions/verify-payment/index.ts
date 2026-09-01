@@ -1,7 +1,6 @@
 // Supabase Edge Function: verify-payment
-// Deploy with: supabase functions deploy verify-payment
+// Deploy with: supabase functions deploy verify-payment --no-verify-jwt
 // Requires secret: PAYSTACK_SECRET_KEY
-// (SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are auto-provided)
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 

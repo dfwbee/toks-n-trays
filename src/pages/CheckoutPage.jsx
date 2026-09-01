@@ -21,11 +21,11 @@ export default function CheckoutPage() {
   const [selectedAreaId, setSelectedAreaId] = useState("");
 
   const [promoInput, setPromoInput] = useState("");
-  const [promo, setPromo] = useState(null); // { code, discount_type, discount_value }
+  const [promo, setPromo] = useState(null);
   const [promoError, setPromoError] = useState("");
   const [checkingPromo, setCheckingPromo] = useState(false);
 
-  const [deliveryTiming, setDeliveryTiming] = useState("asap"); // "asap" | "scheduled"
+  const [deliveryTiming, setDeliveryTiming] = useState("asap");
   const [scheduledDate, setScheduledDate] = useState("");
   const [scheduledTime, setScheduledTime] = useState("");
 
@@ -111,16 +111,12 @@ export default function CheckoutPage() {
       amountNaira: total,
       reference,
       onSuccess: async (paidReference) => {
-        // Paystack itself has already confirmed the payment succeeded — that IS
-        // the source of truth. Don't make the customer wait on (or get blocked
-        // by) our own backend reconciliation step; do that quietly afterward.
-        clear();
-        navigate(`/order-confirmation/${orderId}`);
-
+        setSubmitting(true);
+        let data, error;
         try {
           const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
           const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-          await fetch(`${supabaseUrl}/functions/v1/verify-payment`, {
+          const res = await fetch(`${supabaseUrl}/functions/v1/verify-payment`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -129,9 +125,22 @@ export default function CheckoutPage() {
             },
             body: JSON.stringify({ orderId, reference: paidReference }),
           });
-        } catch (bgErr) {
-          console.error("Background payment verification failed:", bgErr);
+          data = await res.json();
+          if (!res.ok) error = true;
+        } catch (fetchErr) {
+          error = fetchErr;
         }
+        setSubmitting(false);
+
+        if (error || !data?.ok) {
+          setSubmitError(
+            "We received your payment but couldn't confirm it automatically. " +
+            "Don't worry — your order is saved. Contact us with your order ID: " + orderId
+          );
+          return;
+        }
+        clear();
+        navigate(`/order-confirmation/${orderId}`);
       },
       onClose: () => {
         setSubmitError("Payment was not completed. You can try again below — your order is still saved.");
@@ -158,6 +167,7 @@ export default function CheckoutPage() {
 
     if (!orderId) {
       orderId = makeOrderId();
+
       let scheduledFor = null;
       if (deliveryTiming === "scheduled" && scheduledDate && scheduledTime) {
         scheduledFor = new Date(`${scheduledDate}T${scheduledTime}`).toISOString();

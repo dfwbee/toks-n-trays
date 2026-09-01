@@ -6,7 +6,6 @@ export function makeOrderId() {
   return "TNT-" + Math.random().toString(36).slice(2, 8).toUpperCase();
 }
 
-// Creates the order + its line items in Supabase.
 export async function saveOrder({ id, cartItems, subtotal, deliveryFee, total, customer, userId, promoCode, discountAmount, scheduledFor }) {
   const { error: orderError } = await supabase.from("orders").insert({
     id,
@@ -41,7 +40,6 @@ export async function saveOrder({ id, cartItems, subtotal, deliveryFee, total, c
   return { ok: true };
 }
 
-// Fetches an order + its line items, reshaped to match what the UI expects.
 export async function getOrder(id) {
   const { data: order, error } = await supabase
     .from("orders")
@@ -89,7 +87,6 @@ export function stageLabel(order) {
   return order.status;
 }
 
-// Fetches a lightweight list of a user's past orders for the Account page.
 export async function getUserOrders(userId) {
   const { data, error } = await supabase
     .from("orders")
