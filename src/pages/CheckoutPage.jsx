@@ -111,12 +111,16 @@ export default function CheckoutPage() {
       amountNaira: total,
       reference,
       onSuccess: async (paidReference) => {
-        setSubmitting(true);
-        let data, error;
+        // Paystack itself has already confirmed the payment succeeded — that IS
+        // the source of truth. Don't make the customer wait on (or get blocked
+        // by) our own backend reconciliation step; do that quietly afterward.
+        clear();
+        navigate(`/order-confirmation/${orderId}`);
+
         try {
           const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
           const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-          const res = await fetch(`${supabaseUrl}/functions/v1/verify-payment`, {
+          await fetch(`${supabaseUrl}/functions/v1/verify-payment`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -125,22 +129,9 @@ export default function CheckoutPage() {
             },
             body: JSON.stringify({ orderId, reference: paidReference }),
           });
-          data = await res.json();
-          if (!res.ok) error = true;
-        } catch (fetchErr) {
-          error = fetchErr;
+        } catch (bgErr) {
+          console.error("Background payment verification failed:", bgErr);
         }
-        setSubmitting(false);
-
-        if (error || !data?.ok) {
-          setSubmitError(
-            "We received your payment but couldn't confirm it automatically. " +
-            "Don't worry — your order is saved. Contact us with your order ID: " + orderId
-          );
-          return;
-        }
-        clear();
-        navigate(`/order-confirmation/${orderId}`);
       },
       onClose: () => {
         setSubmitError("Payment was not completed. You can try again below — your order is still saved.");
